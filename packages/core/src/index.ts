@@ -5,3 +5,4 @@ export * from "./status";
 export * from "./ordenar";
 export * from "./duplicata";
 export * from "./hora";
+export * from "./sugestoes";
