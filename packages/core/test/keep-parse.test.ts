@@ -40,6 +40,17 @@ describe("parseListaKeep", () => {
     });
   });
 
+  it.each(["[ ]", "[x]", "- [ ]", "- [X]"])(
+    "remove o marcador %s do começo da linha e não o leva para o nome",
+    (marcador) => {
+      const { importados, falhas } = parseListaKeep(
+        `${marcador} Vinho (2019) ${BASE}`,
+      );
+      expect(falhas).toEqual([]);
+      expect(importados[0]?.nome).toBe("Vinho");
+    },
+  );
+
   it("aceita texto colado do Windows, marcadores do Keep e U+FE0F", () => {
     const texto = [
       `☐ Vinho A (2019) ${BASE}`,
