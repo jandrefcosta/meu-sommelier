@@ -1,0 +1,19 @@
+{
+  "name": "@meu-sommelier/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^5.0.3",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.3"
+  }
+}
