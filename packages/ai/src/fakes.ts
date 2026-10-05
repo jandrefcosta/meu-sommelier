@@ -1,7 +1,9 @@
 import { gerarComRetentativa, type Correcao } from "./retentativa";
 import {
   ErroIA,
+  type BuscaPrecos,
   type ModeloLLM,
+  type ResultadoBuscaPrecos,
   type PedidoJson,
   type RespostaJson,
   type TipoUso,
@@ -41,5 +43,26 @@ export class FakeLLM implements ModeloLLM {
       if (proxima instanceof Error) throw proxima;
       return { texto: proxima, uso: usoFake(pedido.tipo) };
     });
+  }
+}
+
+export class FakeBuscaPrecos implements BuscaPrecos {
+  readonly chamadas: Array<{
+    nome: string;
+    safra: number | null;
+    timeoutMs: number;
+  }> = [];
+
+  constructor(
+    private readonly resultado: ResultadoBuscaPrecos = { ok: false, usos: [] },
+  ) {}
+
+  async buscar(p: {
+    nome: string;
+    safra: number | null;
+    timeoutMs: number;
+  }): Promise<ResultadoBuscaPrecos> {
+    this.chamadas.push(p);
+    return this.resultado;
   }
 }
