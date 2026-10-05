@@ -60,7 +60,7 @@ type Leitura = { ok: true; ficha: FichaVinho } | { ok: false; motivo: string };
 type Faixa = { min: number | null; max: number | null };
 
 const TRACO = "[–—-]";
-const SELETOR_VARIACAO = /️/gu;
+const SELETOR_VARIACAO = new RegExp("\\uFE0F", "gu");
 const MARCADOR_CHECKLIST = /^(?:[☐☑✅✔]|-\s*\[[ xX]\])\s*/u;
 const CABECALHO = /^(.*\S)\s*\(\s*(\d{4}|NV)\s*\)$/iu;
 const VALOR = "(\\d{1,3}(?:\\.\\d{3})+|\\d+)(?:,(\\d{2}))?";
