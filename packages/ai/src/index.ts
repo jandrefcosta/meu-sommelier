@@ -5,3 +5,4 @@ export * from "./fakes";
 export * from "./prompts";
 export * from "./respostas";
 export * from "./anthropic";
+export * from "./openai-compat";
