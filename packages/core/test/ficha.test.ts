@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { FichaVinhoSchema, type FichaVinho } from "../src/ficha";
+import {
+  FichaVinhoCamposSchema,
+  FichaVinhoSchema,
+  type FichaVinho,
+} from "../src/ficha";
 import { fichaValida } from "./fabricas";
 
 function erros(dados: unknown): string[] {
@@ -120,5 +124,29 @@ describe("FichaVinhoSchema", () => {
       ],
     });
     expect(erros(ficha)).toContain("a fonte precisa ser um link http(s)");
+  });
+
+  it("expõe os campos sem regras para que outros pacotes possam usar omit", () => {
+    const semPreco = FichaVinhoCamposSchema.omit({
+      precoMinCentavos: true,
+      precoMaxCentavos: true,
+      precoFontes: true,
+      precoConsultadoEm: true,
+    });
+    const {
+      precoMinCentavos,
+      precoMaxCentavos,
+      precoFontes,
+      precoConsultadoEm,
+      ...resto
+    } = fichaValida();
+    void [precoMinCentavos, precoMaxCentavos, precoFontes, precoConsultadoEm];
+    expect(semPreco.safeParse(resto).success).toBe(true);
+  });
+
+  it("os campos sozinhos não aplicam as regras entre campos", () => {
+    const invalida = fichaValida({ abrirDe: 2027, guardaAte: 2026 });
+    expect(FichaVinhoCamposSchema.safeParse(invalida).success).toBe(true);
+    expect(FichaVinhoSchema.safeParse(invalida).success).toBe(false);
   });
 });

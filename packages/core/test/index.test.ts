@@ -14,6 +14,8 @@ describe("@meu-sommelier/core", () => {
         "TIPOS_VINHO",
         "TipoVinhoSchema",
         "FontePrecoSchema",
+        "FichaVinhoCamposSchema",
+        "validarRegrasFicha",
         "FichaVinhoSchema",
         "STATUS_CONSUMO",
         "statusConsumo",
