@@ -7,3 +7,4 @@ export * from "./respostas";
 export * from "./anthropic";
 export * from "./openai-compat";
 export * from "./busca-precos";
+export * from "./sommelier";
