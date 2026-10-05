@@ -1,0 +1,25 @@
+{
+  "nome": "Château Labadie Médoc Cru Bourgeois",
+  "produtor": "Château Labadie",
+  "safra": 2020,
+  "tipo": "tinto",
+  "uvas": ["Cabernet Sauvignon", "Merlot"],
+  "pais": "França",
+  "regiao": "Médoc",
+  "precoMinCentavos": 22000,
+  "precoMaxCentavos": 28000,
+  "precoFontes": [
+    {
+      "loja": "Loja Exemplo",
+      "url": "https://loja.example/labadie-2020",
+      "precoCentavos": 24900
+    }
+  ],
+  "precoConsultadoEm": "2026-10-05T12:00:00-03:00",
+  "abrirDe": 2026,
+  "abrirAte": null,
+  "guardaAte": 2030,
+  "decantarMin": 30,
+  "decantarMax": 45,
+  "harmonizacoes": ["Estrogonofe de carne", "corte de novilho grelhado"]
+}
