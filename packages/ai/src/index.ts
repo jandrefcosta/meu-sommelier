@@ -4,3 +4,4 @@ export * from "./retentativa";
 export * from "./fakes";
 export * from "./prompts";
 export * from "./respostas";
+export * from "./anthropic";
