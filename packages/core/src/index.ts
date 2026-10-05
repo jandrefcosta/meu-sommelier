@@ -4,3 +4,4 @@ export * from "./ficha";
 export * from "./status";
 export * from "./ordenar";
 export * from "./duplicata";
+export * from "./hora";
