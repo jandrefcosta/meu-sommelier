@@ -11,7 +11,10 @@
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "test:coverage": "pnpm -r test:coverage"
+    "test:coverage": "pnpm -r test:coverage",
+    "test:live": "pnpm --filter @meu-sommelier/ai test:live",
+    "eval:rotulos": "pnpm --filter @meu-sommelier/ai eval:rotulos",
+    "ai:gravar": "pnpm --filter @meu-sommelier/ai eval:rotulos --gravar"
   },
   "packageManager": "pnpm@12.9.1",
   "devDependencies": {

@@ -9,3 +9,4 @@ export * from "./openai-compat";
 export * from "./busca-precos";
 export * from "./sommelier";
 export * from "./config";
+export * from "./avaliacao";
