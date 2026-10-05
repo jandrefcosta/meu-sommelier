@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
-import { custoAnthropicUsd } from "./custos";
+import { custoAnthropicUsd, USD_POR_BUSCA_WEB } from "./custos";
 import { gerarComRetentativa, mensagemCorrecao } from "./retentativa";
 import {
   ErroIA,
@@ -23,28 +23,57 @@ export interface OpcoesAnthropic {
   baseURL?: string;
 }
 
+interface Cobranca {
+  modelo: string;
+  tokensEntrada: number;
+  tokensSaida: number;
+}
+
+function cobranca(
+  modelo: string,
+  uso: {
+    input_tokens: number;
+    output_tokens: number;
+    cache_creation_input_tokens: number | null;
+    cache_read_input_tokens: number | null;
+  },
+): Cobranca {
+  return {
+    modelo,
+    tokensEntrada:
+      uso.input_tokens +
+      (uso.cache_creation_input_tokens ?? 0) +
+      (uso.cache_read_input_tokens ?? 0),
+    tokensSaida: uso.output_tokens,
+  };
+}
+
+// Com `fallbacks`, o usage de topo cobre só a tentativa que respondeu; as
+// `iterations` trazem cada tentativa cobrada (inclusive a recusada).
 export function usoAnthropic(
   tipo: TipoUso,
   modelo: string,
   usage: Anthropic.Beta.BetaUsage,
 ): UsoIA {
-  const tokensEntrada =
-    usage.input_tokens +
-    (usage.cache_creation_input_tokens ?? 0) +
-    (usage.cache_read_input_tokens ?? 0);
+  const cobrancas = usage.iterations?.length
+    ? usage.iterations.map((it) =>
+        cobranca(("model" in it ? it.model : null) ?? modelo, it),
+      )
+    : [cobranca(modelo, usage)];
   const buscasWeb = usage.server_tool_use?.web_search_requests ?? 0;
+
+  let custoUsd: number | null = buscasWeb * USD_POR_BUSCA_WEB;
+  for (const c of cobrancas) {
+    const custo = custoAnthropicUsd(c.modelo, c.tokensEntrada, c.tokensSaida);
+    custoUsd = custo === null || custoUsd === null ? null : custoUsd + custo;
+  }
   return {
     tipo,
     provedor: "anthropic",
     modelo,
-    tokensEntrada,
-    tokensSaida: usage.output_tokens,
-    custoUsd: custoAnthropicUsd(
-      modelo,
-      tokensEntrada,
-      usage.output_tokens,
-      buscasWeb,
-    ),
+    tokensEntrada: cobrancas.reduce((t, c) => t + c.tokensEntrada, 0),
+    tokensSaida: cobrancas.reduce((t, c) => t + c.tokensSaida, 0),
+    custoUsd,
   };
 }
 

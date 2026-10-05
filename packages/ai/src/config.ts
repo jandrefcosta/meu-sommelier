@@ -119,9 +119,10 @@ export function carregarConfigIA(
   env: Record<string, string | undefined>,
 ): ConfigIA {
   const semVazios = Object.fromEntries(
-    Object.entries(env).filter(
-      ([, valor]) => valor !== undefined && valor.trim() !== "",
-    ),
+    Object.entries(env).flatMap(([chave, valor]) => {
+      const limpo = valor?.trim();
+      return limpo ? [[chave, limpo]] : [];
+    }),
   );
   const resultado = EnvIASchema.safeParse(semVazios);
   if (!resultado.success) {

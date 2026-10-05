@@ -47,6 +47,12 @@ describe("extrairJson", () => {
     ['```json\n{"a":1}\n```', '{"a":1}'],
     ['Aqui está:\n{"a":1}\nAbraços', '{"a":1}'],
     ["sem json", "sem json"],
+    ['Pesquisei em {3} lojas.\n{"a":1}', '{"a":1}'],
+    ['{"a":1} Espero ter ajudado {:)}', '{"a":1}'],
+    [
+      'Veja: {"a":"chave } dentro","b":{"c":2}} {fim}',
+      '{"a":"chave } dentro","b":{"c":2}}',
+    ],
   ])("%j → %j", (entrada, esperado) => {
     expect(extrairJson(entrada)).toBe(esperado);
   });

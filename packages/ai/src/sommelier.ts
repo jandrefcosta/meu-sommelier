@@ -26,6 +26,8 @@ import {
 
 export const TIMEOUT_FICHA_MS = 45_000;
 export const TIMEOUT_PRATO_MS = 20_000;
+// Abaixo disso a busca de preço quase nunca termina: devolve a ficha sem preço.
+export const TEMPO_MINIMO_PRECO_MS = 10_000;
 export const ESTILO_SEM_SUGESTAO =
   "Nenhuma garrafa da adega combina bem com este prato.";
 
@@ -75,7 +77,7 @@ export class SommelierPadrao implements Sommelier {
       const semBoaOpcao =
         sugestoes.length === 0
           ? (dados.semBoaOpcao ?? { estiloIdeal: ESTILO_SEM_SUGESTAO })
-          : dados.semBoaOpcao;
+          : null;
       return { ok: true, sugestoes, semBoaOpcao, usos };
     } catch (erro) {
       if (erro instanceof ErroIA)
@@ -114,7 +116,8 @@ export class SommelierPadrao implements Sommelier {
 
     const restante =
       inicio.getTime() + TIMEOUT_FICHA_MS - this.relogio.agora().getTime();
-    if (restante <= 0) return { ok: true, ficha, precoConsultado: false, usos };
+    if (restante < TEMPO_MINIMO_PRECO_MS)
+      return { ok: true, ficha, precoConsultado: false, usos };
 
     const preco = await this.deps.buscaPrecos.buscar({
       nome: ficha.nome,

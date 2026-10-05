@@ -38,7 +38,9 @@ export class OpenAICompativelLLM implements ModeloLLM {
         `o modelo ${this.opcoes.modelo} não aceita imagem`,
       );
     }
+    // Alguns provedores recusam a chave `$schema` dentro de response_format.
     const jsonSchema = z.toJSONSchema(pedido.schema) as Record<string, unknown>;
+    delete jsonSchema.$schema;
     const sistema = this.opcoes.usarJsonSchema
       ? pedido.instrucoes
       : `${pedido.instrucoes}\n\nResponda somente com um objeto JSON que siga este JSON Schema:\n${JSON.stringify(jsonSchema)}`;

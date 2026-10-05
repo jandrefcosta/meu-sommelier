@@ -117,6 +117,77 @@ describe("AnthropicLLM", () => {
     expect(r.usos[0]!.custoUsd).toBeCloseTo(0.0008);
   });
 
+  it("com iterations, soma tokens e custo de todas as tentativas cobradas", async () => {
+    bancada.fila.push({ json: '{"vinho":"Malbec"}' });
+    const iteracao = (
+      type: string,
+      model: string | null,
+      input_tokens: number,
+      output_tokens: number,
+    ) => ({
+      type,
+      model,
+      input_tokens,
+      output_tokens,
+      cache_creation_input_tokens: 0,
+      cache_read_input_tokens: 0,
+      cache_creation: null,
+    });
+    extrasResposta = {
+      model: "claude-sonnet-5-5",
+      usage: {
+        input_tokens: 100,
+        output_tokens: 20,
+        iterations: [
+          iteracao("message", "claude-opus-5-5", 300, 50),
+          iteracao("message", null, 40, 10),
+          iteracao("fallback_message", "claude-sonnet-5-5", 100, 20),
+        ],
+      },
+    };
+    const r = await bancada.criar({ suportaImagem: true }).gerarJson(pedido);
+    expect(r.usos[0]).toMatchObject({
+      modelo: "claude-sonnet-5-5",
+      tokensEntrada: 440,
+      tokensSaida: 80,
+    });
+    // opus 5.5: (300*4 + 50*20)/1e6; sem modelo → sonnet 5.5: (40*2 + 10*10)/1e6;
+    // sonnet 5.5: (100*2 + 20*10)/1e6
+    expect(r.usos[0]!.custoUsd).toBeCloseTo(0.0022 + 0.00018 + 0.0004, 8);
+  });
+
+  it("com iterations de modelo sem preço, o custo fica desconhecido", async () => {
+    bancada.fila.push({ json: '{"vinho":"Malbec"}' });
+    extrasResposta = {
+      usage: {
+        input_tokens: 100,
+        output_tokens: 20,
+        iterations: [
+          {
+            type: "message",
+            model: "modelo-desconhecido",
+            input_tokens: 10,
+            output_tokens: 1,
+            cache_creation_input_tokens: 0,
+            cache_read_input_tokens: 0,
+            cache_creation: null,
+          },
+          {
+            type: "fallback_message",
+            model: "claude-opus-5-5",
+            input_tokens: 100,
+            output_tokens: 20,
+            cache_creation_input_tokens: 0,
+            cache_read_input_tokens: 0,
+            cache_creation: null,
+          },
+        ],
+      },
+    };
+    const r = await bancada.criar({ suportaImagem: true }).gerarJson(pedido);
+    expect(r.usos[0]).toMatchObject({ tokensEntrada: 110, custoUsd: null });
+  });
+
   it("recusa da IA vira indisponivel", async () => {
     bancada.fila.push({ json: "" });
     extrasResposta = { stop_reason: "refusal" };

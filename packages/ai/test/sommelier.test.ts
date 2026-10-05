@@ -4,6 +4,7 @@ import { FakeBuscaPrecos, FakeLLM, usoFake } from "../src/fakes";
 import {
   ESTILO_SEM_SUGESTAO,
   SommelierPadrao,
+  TEMPO_MINIMO_PRECO_MS,
   TIMEOUT_FICHA_MS,
   TIMEOUT_PRATO_MS,
 } from "../src/sommelier";
@@ -133,10 +134,34 @@ describe("SommelierPadrao.lerRotulo", () => {
     const { sommelier, buscaPrecos } = montar(
       [fichaOk],
       PRECO_OK,
-      relogioQueAvanca([40_000]),
+      relogioQueAvanca([30_000]),
     );
     await sommelier.lerRotulo(IMAGEM);
-    expect(buscaPrecos.chamadas[0]?.timeoutMs).toBe(5_000);
+    expect(buscaPrecos.chamadas[0]?.timeoutMs).toBe(15_000);
+  });
+
+  it("com menos que o tempo mínimo sobrando, não busca preço", async () => {
+    expect(TEMPO_MINIMO_PRECO_MS).toBe(10_000);
+    const { sommelier, buscaPrecos } = montar(
+      [fichaOk],
+      PRECO_OK,
+      relogioQueAvanca([40_000]),
+    );
+    expect(await sommelier.lerRotulo(IMAGEM)).toMatchObject({
+      ok: true,
+      precoConsultado: false,
+    });
+    expect(buscaPrecos.chamadas).toHaveLength(0);
+  });
+
+  it("com exatamente o tempo mínimo sobrando, busca preço", async () => {
+    const { sommelier, buscaPrecos } = montar(
+      [fichaOk],
+      PRECO_OK,
+      relogioQueAvanca([TIMEOUT_FICHA_MS - TEMPO_MINIMO_PRECO_MS]),
+    );
+    await sommelier.lerRotulo(IMAGEM);
+    expect(buscaPrecos.chamadas[0]?.timeoutMs).toBe(TEMPO_MINIMO_PRECO_MS);
   });
 
   it("se a ficha consumiu os 45 s, não busca preço", async () => {
@@ -203,6 +228,20 @@ describe("SommelierPadrao.sugerirParaPrato", () => {
       timeoutMs: TIMEOUT_PRATO_MS,
     });
     expect(llmPrato.pedidos[0]?.texto).toContain("<prato>churrasco</prato>");
+  });
+
+  it("com sugestões que sobraram, semBoaOpcao vem null mesmo se a IA mandou", async () => {
+    const resposta = JSON.stringify({
+      sugestoes: [sugestao("x"), sugestao("a")],
+      semBoaOpcao: { estiloIdeal: "Branco leve" },
+    });
+    const { sommelier } = montar([resposta]);
+    expect(
+      await sommelier.sugerirParaPrato({ prato: "peixe", adega }),
+    ).toMatchObject({
+      sugestoes: [sugestao("a")],
+      semBoaOpcao: null,
+    });
   });
 
   it("se nada sobrar, usa o estilo ideal da IA", async () => {

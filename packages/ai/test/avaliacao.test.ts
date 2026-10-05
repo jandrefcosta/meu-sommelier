@@ -39,6 +39,25 @@ describe("avaliarLeitura", () => {
     expect(r).toEqual({ acertouNome: true, acertouSafra: false, custoUsd: 0 });
   });
 
+  it.each([
+    ["o nome lido", { nome: " ", esperado: "Chateau Labadie" }],
+    ["o nome esperado", { nome: FICHA_FAKE.nome, esperado: " " }],
+  ])(
+    "erra o nome quando %s normaliza para vazio",
+    (_caso, { nome, esperado: alvo }) => {
+      const r = avaliarLeitura(
+        { ...esperado, nome: alvo },
+        {
+          ok: true,
+          ficha: { ...FICHA_FAKE, nome },
+          precoConsultado: false,
+          usos: [],
+        },
+      );
+      expect(r.acertouNome).toBe(false);
+    },
+  );
+
   it("leitura que falhou erra tudo e soma custo desconhecido como zero", () => {
     expect(
       avaliarLeitura(esperado, {

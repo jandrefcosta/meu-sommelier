@@ -13,7 +13,10 @@ const URL_COMPAT = "https://compat.test/v1";
 type Parte = { type: string; text?: string };
 type CorpoOpenAI = {
   model: string;
-  response_format?: { type: string; json_schema: { name: string } };
+  response_format?: {
+    type: string;
+    json_schema: { name: string; schema: Record<string, unknown> };
+  };
   messages: Array<{ role: string; content: string | Parte[] }>;
 };
 
@@ -111,6 +114,20 @@ describe("OpenAICompativelLLM", () => {
       role: "system",
       content: "Instruções",
     });
+  });
+
+  it("não manda a chave $schema no JSON Schema", async () => {
+    bancada.fila.push({ json: '{"vinho":"Malbec"}' });
+    await bancada.criar({ suportaImagem: true }).gerarJson(pedido);
+    const schema = corpos[0]?.response_format?.json_schema.schema;
+    expect(schema).toMatchObject({ type: "object" });
+    expect(schema).not.toHaveProperty("$schema");
+
+    usarJsonSchema = false;
+    bancada.fila.push({ json: '{"vinho":"Malbec"}' });
+    await bancada.criar({ suportaImagem: true }).gerarJson(pedido);
+    expect(corpos[1]?.messages[0]?.content).toContain('"type":"object"');
+    expect(corpos[1]?.messages[0]?.content).not.toContain("$schema");
   });
 
   it("sem json_schema, manda o schema nas instruções", async () => {

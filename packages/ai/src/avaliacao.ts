@@ -27,7 +27,10 @@ export function avaliarLeitura(
   const lido = normalizar(resultado.ficha.nome);
   const alvo = normalizar(esperado.nome);
   return {
-    acertouNome: lido.includes(alvo) || alvo.includes(lido),
+    acertouNome:
+      lido !== "" &&
+      alvo !== "" &&
+      (lido.includes(alvo) || alvo.includes(lido)),
     acertouSafra: resultado.ficha.safra === esperado.safra,
     custoUsd,
   };

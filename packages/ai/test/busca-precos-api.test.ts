@@ -50,6 +50,36 @@ describe("BuscaPrecosApiBusca", () => {
     expect(llm.pedidos[0]?.texto).toContain("<resultados_busca>");
   });
 
+  it("descarta fontes cujo host não veio da busca", async () => {
+    resposta = () => HttpResponse.json(RESULTADOS);
+    const llm = new FakeLLM([
+      '{"encontrado":true,"precoMinReais":220,"precoMaxReais":280,"fontes":[{"loja":"Inventada","url":"https://inventada.example/x","precoReais":230},{"loja":"Loja","url":"https://loja.example/outra","precoReais":249.9}]}',
+    ]);
+    const r = await new BuscaPrecosApiBusca({ tavilyApiKey: "x", llm }).buscar(
+      pedido,
+    );
+    expect(r).toMatchObject({ ok: true });
+    expect(r.ok && r.fontes).toEqual([
+      {
+        loja: "Loja",
+        url: "https://loja.example/outra",
+        precoCentavos: 24990,
+      },
+    ]);
+  });
+
+  it("sem nenhuma fonte vinda da busca, vira ok:false com o uso", async () => {
+    resposta = () => HttpResponse.json(RESULTADOS);
+    const llm = new FakeLLM([
+      '{"encontrado":true,"precoMinReais":220,"precoMaxReais":280,"fontes":[{"loja":"Inventada","url":"https://inventada.example/x","precoReais":230}]}',
+    ]);
+    const r = await new BuscaPrecosApiBusca({ tavilyApiKey: "x", llm }).buscar(
+      pedido,
+    );
+    expect(r.ok).toBe(false);
+    expect(r.usos).toHaveLength(1);
+  });
+
   it("falha da API de busca vira ok:false sem chamar o modelo", async () => {
     resposta = () =>
       HttpResponse.json({ detail: "não autorizado" }, { status: 401 });

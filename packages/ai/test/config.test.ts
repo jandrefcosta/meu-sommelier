@@ -33,6 +33,21 @@ describe("carregarConfigIA", () => {
     expect(config.OPENAI_COMPAT_JSON_SCHEMA).toBe(false);
   });
 
+  it("tira espaços das pontas dos valores", () => {
+    const config = carregarConfigIA({
+      ANTHROPIC_API_KEY: " sk-ant-teste ",
+      IA_ROTULO: "anthropic:claude-opus-5-5 ",
+      IA_PRECO_BUSCA: "nenhuma\n",
+      OPENAI_COMPAT_JSON_SCHEMA: " false",
+    });
+    expect(config).toMatchObject({
+      ANTHROPIC_API_KEY: "sk-ant-teste",
+      IA_ROTULO: { provedor: "anthropic", modelo: "claude-opus-5-5" },
+      IA_PRECO_BUSCA: "nenhuma",
+      OPENAI_COMPAT_JSON_SCHEMA: false,
+    });
+  });
+
   it.each([
     ["sem chave da Anthropic", {}, /ANTHROPIC_API_KEY/],
     [

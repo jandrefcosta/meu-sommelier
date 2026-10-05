@@ -18,9 +18,53 @@ export function descreverVinho(nome: string, safra: number | null): string {
   return `<vinho>${nome}</vinho>\n<safra>${safra ?? "sem safra (NV)"}</safra>`;
 }
 
-function resultado(preco: PrecoIA, usos: UsoIA[]): ResultadoBuscaPrecos {
+function host(url: string): string | null {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+}
+
+// Só aceita fontes cujo host apareceu nos resultados da busca; sem fonte
+// confirmada, o preço não conta como encontrado.
+function resultado(
+  preco: PrecoIA,
+  urlsDaBusca: string[],
+  usos: UsoIA[],
+): ResultadoBuscaPrecos {
   const emCentavos = precoParaCentavos(preco);
-  return emCentavos ? { ok: true, ...emCentavos, usos } : { ok: false, usos };
+  if (!emCentavos) return { ok: false, usos };
+  const hosts = new Set(urlsDaBusca.map(host));
+  const fontes = emCentavos.fontes.filter((f) => {
+    const h = host(f.url);
+    return h !== null && hosts.has(h);
+  });
+  return fontes.length > 0
+    ? { ok: true, ...emCentavos, fontes, usos }
+    : { ok: false, usos };
+}
+
+type BlocoResposta = Anthropic.Beta.BetaContentBlock;
+
+// Com web search a API divide o texto final em vários blocos (um a cada
+// citação). Junta o texto que vem depois do último resultado da busca.
+export function textoDaRespostaFinal(conteudo: BlocoResposta[]): string {
+  const ultimaBusca = conteudo.findLastIndex(
+    (bloco) => bloco.type === "web_search_tool_result",
+  );
+  return conteudo
+    .slice(ultimaBusca + 1)
+    .flatMap((bloco) => (bloco.type === "text" ? [bloco.text] : []))
+    .join("");
+}
+
+function urlsDaBuscaWeb(conteudo: BlocoResposta[]): string[] {
+  return conteudo.flatMap((bloco) =>
+    bloco.type === "web_search_tool_result" && Array.isArray(bloco.content)
+      ? bloco.content.map((r) => r.url)
+      : [],
+  );
 }
 
 export class SemBuscaPrecos implements BuscaPrecos {
@@ -84,13 +128,12 @@ export class BuscaPrecosAnthropic implements BuscaPrecos {
     if (resposta.stop_reason !== "end_turn" || buscaFalhou)
       return { ok: false, usos };
 
-    const ultimoTexto = resposta.content.findLast(
-      (bloco) => bloco.type === "text",
+    const validacao = validarJson(
+      textoDaRespostaFinal(resposta.content),
+      PrecoIASchema,
     );
-    if (!ultimoTexto || ultimoTexto.type !== "text") return { ok: false, usos };
-    const validacao = validarJson(ultimoTexto.text, PrecoIASchema);
     return validacao.ok
-      ? resultado(validacao.dados, usos)
+      ? resultado(validacao.dados, urlsDaBuscaWeb(resposta.content), usos)
       : { ok: false, usos };
   }
 }
@@ -152,7 +195,11 @@ export class BuscaPrecosApiBusca implements BuscaPrecos {
         schema: PrecoIASchema,
         timeoutMs: Math.max(1, prazo - Date.now()),
       });
-      return resultado(dados, usos);
+      return resultado(
+        dados,
+        resultados.map((r) => r.url),
+        usos,
+      );
     } catch (erro) {
       return { ok: false, usos: erro instanceof ErroIA ? erro.usos : [] };
     }

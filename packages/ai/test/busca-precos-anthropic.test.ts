@@ -1,6 +1,10 @@
 import { http, HttpResponse } from "msw";
 import { beforeEach, describe, expect, it } from "vitest";
-import { BuscaPrecosAnthropic, SemBuscaPrecos } from "../src/busca-precos";
+import {
+  BuscaPrecosAnthropic,
+  SemBuscaPrecos,
+  textoDaRespostaFinal,
+} from "../src/busca-precos";
 import {
   blocoTexto,
   erroAnthropic,
@@ -113,6 +117,83 @@ describe("BuscaPrecosAnthropic", () => {
     );
   });
 
+  it("junta o texto dividido pelas citações depois do último resultado da busca", async () => {
+    const citacao = {
+      type: "web_search_result_location",
+      url: "https://loja.example/v",
+      title: "Loja",
+      encrypted_index: "x",
+      cited_text: "R$ 249,90",
+    };
+    proxima = () =>
+      comBusca({}, [
+        blocoTexto("Antes da busca {rascunho}"),
+        buscaOk,
+        resultadoOk,
+        blocoTexto('Achei.\n{"encontrado":true,"precoMinReais":220,'),
+        {
+          type: "text",
+          text: '"precoMaxReais":280,"fontes":[{"loja":"Loja","url":"https://loja.example/v","precoReais":249.9}]',
+          citations: [citacao],
+        },
+        blocoTexto("}"),
+      ]);
+    expect(await busca().buscar(pedido)).toMatchObject({
+      ok: true,
+      min: 22000,
+      max: 28000,
+    });
+  });
+
+  it("ignora chaves soltas no texto em volta do JSON", async () => {
+    proxima = () =>
+      comBusca({}, [
+        buscaOk,
+        resultadoOk,
+        blocoTexto(
+          `Pesquisei em {3} lojas.\n${JSON_PRECO} Espero ter ajudado {:)}`,
+        ),
+      ]);
+    expect(await busca().buscar(pedido)).toMatchObject({
+      ok: true,
+      min: 22000,
+    });
+  });
+
+  it("descarta fontes cujo host não veio da busca", async () => {
+    proxima = () =>
+      comBusca({}, [
+        buscaOk,
+        resultadoOk,
+        blocoTexto(
+          '{"encontrado":true,"precoMinReais":220,"precoMaxReais":280,"fontes":[{"loja":"Inventada","url":"https://inventada.example/x","precoReais":230},{"loja":"Loja","url":"https://loja.example/outra","precoReais":249.9}]}',
+        ),
+      ]);
+    const r = await busca().buscar(pedido);
+    expect(r).toMatchObject({ ok: true });
+    expect(r.ok && r.fontes).toEqual([
+      {
+        loja: "Loja",
+        url: "https://loja.example/outra",
+        precoCentavos: 24990,
+      },
+    ]);
+  });
+
+  it("sem nenhuma fonte vinda da busca, vira ok:false com o uso", async () => {
+    proxima = () =>
+      comBusca({}, [
+        buscaOk,
+        resultadoOk,
+        blocoTexto(
+          '{"encontrado":true,"precoMinReais":220,"precoMaxReais":280,"fontes":[{"loja":"Inventada","url":"https://inventada.example/x","precoReais":230}]}',
+        ),
+      ]);
+    const r = await busca().buscar(pedido);
+    expect(r.ok).toBe(false);
+    expect(r.usos).toHaveLength(1);
+  });
+
   it("erro da busca devolvido com HTTP 200 vira ok:false", async () => {
     const erroBusca = {
       type: "web_search_tool_result",
@@ -157,6 +238,29 @@ describe("BuscaPrecosAnthropic", () => {
   it("falha HTTP vira ok:false sem usos", async () => {
     proxima = () => erroAnthropic(500);
     expect(await busca().buscar(pedido)).toEqual({ ok: false, usos: [] });
+  });
+});
+
+describe("textoDaRespostaFinal", () => {
+  type Conteudo = Parameters<typeof textoDaRespostaFinal>[0];
+
+  it("sem resultado de busca, junta o texto de todos os blocos", () => {
+    const conteudo = [blocoTexto('{"a":'), blocoTexto("1}")] as Conteudo;
+    expect(textoDaRespostaFinal(conteudo)).toBe('{"a":1}');
+  });
+
+  it("com resultados de busca, junta só o texto depois do último", () => {
+    const conteudo = [
+      blocoTexto("antes"),
+      buscaOk,
+      resultadoOk,
+      blocoTexto("meio"),
+      buscaOk,
+      resultadoOk,
+      blocoTexto('{"a":'),
+      blocoTexto("1}"),
+    ] as Conteudo;
+    expect(textoDaRespostaFinal(conteudo)).toBe('{"a":1}');
   });
 });
 

@@ -11,7 +11,39 @@ export interface Correcao {
   erro: string;
 }
 
+// Fim do objeto balanceado que começa em `inicio` (um "{"), ignorando chaves
+// dentro de strings JSON; -1 se o objeto não fecha.
+function fimDoObjeto(texto: string, inicio: number): number {
+  let profundidade = 0;
+  let emString = false;
+  for (let i = inicio; i < texto.length; i++) {
+    const c = texto[i];
+    if (emString) {
+      if (c === "\\") i++;
+      else if (c === '"') emString = false;
+    } else if (c === '"') emString = true;
+    else if (c === "{") profundidade++;
+    else if (c === "}" && --profundidade === 0) return i;
+  }
+  return -1;
+}
+
 export function extrairJson(texto: string): string {
+  for (
+    let inicio = texto.indexOf("{");
+    inicio >= 0;
+    inicio = texto.indexOf("{", inicio + 1)
+  ) {
+    const fim = fimDoObjeto(texto, inicio);
+    if (fim < 0) continue;
+    const candidato = texto.slice(inicio, fim + 1);
+    try {
+      JSON.parse(candidato);
+      return candidato;
+    } catch {
+      // tenta o próximo "{"
+    }
+  }
   const inicio = texto.indexOf("{");
   const fim = texto.lastIndexOf("}");
   return inicio >= 0 && fim > inicio
